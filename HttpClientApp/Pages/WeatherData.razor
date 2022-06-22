@@ -1,0 +1,66 @@
+﻿@page "/weather"
+@using HttpClientApp.Config
+
+@inject IConfiguration _configuration;
+@inject IHttpClientFactory _clientFactory
+
+<h3>Weather Data</h3>
+
+@if (string.IsNullOrWhiteSpace(errorString) == false)
+{
+	<div class="h2">@errorString</div>
+}
+else if (forecast is null)
+{
+	<div class="h4">Loading ...</div>
+}
+else
+{
+	<table class="table table-striped">
+		<thead class="thead-dark">
+			<tr>
+				<th>Country</th>
+				<th>Sunrise</th>
+				<th>Sunset</th>
+				<th>Low</th>
+				<th>High</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<th>@forecast.sys.country</th>
+				<th>@forecast.sys.sunrise</th>
+				<th>@forecast.sys.sunset</th>
+				<th>@forecast.main.temp_min</th>
+				<th>@forecast.main.temp_max</th>
+			</tr>
+		</tbody>
+	</table>
+}
+
+@code {
+	WeatherForecastModel? forecast;
+	string? errorString;
+
+	protected override async Task OnInitializedAsync()
+	{
+		//var apiKey = _configuration["ApiKeys:OpenWeatherMapOrg:Value"];      
+		var apiKey = _configuration.GetSection("ApiKeys").GetSection(nameof(OpenWeatherMapOrg)).Get<OpenWeatherMapOrg>();
+
+		var request = new HttpRequestMessage(HttpMethod.Get,
+			$"http://api.openweathermap.org/data/2.5/weather?q=Voronezh,ru&{apiKey}");
+
+		var client = _clientFactory.CreateClient();
+		var response = await client.SendAsync(request);
+
+		if (response.IsSuccessStatusCode)
+		{
+			forecast = await response.Content.ReadFromJsonAsync<WeatherForecastModel>();
+			errorString = null;
+		}
+		else
+		{
+			errorString = $"There was an error getting our forecast: {response.ReasonPhrase}";
+		}
+	}
+}
